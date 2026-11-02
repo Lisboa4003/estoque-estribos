@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESTOQUE</title>
+<style>
+  :root{
+    --bg:#f4f6f9;
+    --card:#ffffff;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --accent:#ea580c;
+    --accent-dark:#c2410c;
+    --green:#0f766e;
+    --red:#dc2626;
+    --radius:12px;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:20px 16px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  .login-card{max-width:440px;margin:7vh auto 0}
+  .login-card h2{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.15rem}
+  .login-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;font:inherit;margin:6px 0 12px}
+  .login-status{min-height:1.2em;color:var(--red);font-size:.85rem}
+  .session-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:12px;color:var(--muted);font-size:.82rem}
+
+  header.top{
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+    margin-bottom:20px;
+  }
+  header.top h1{
+    font-size:1.45rem;margin:0;letter-spacing:-.02em;
+    display:flex;align-items:center;gap:10px;
+  }
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px;margin-bottom:18px;
+  }
+  .form-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .form-heading h2{margin:0;padding-top:8px}
+  .date-field{position:relative;display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:0}
+  .date-field label{font-size:.74rem;font-weight:600;color:var(--muted)}
+  .date-field .calendar-popup{position:fixed;top:50%;left:50%;right:auto;z-index:1002;transform:translate(-50%,-50%);width:min(360px,calc(100vw - 32px));max-width:none;margin:0}
+  .calendar-backdrop{display:none;position:fixed;inset:0;z-index:1001;background:rgba(15,23,42,.38)}
+  .calendar-backdrop.show{display:block}
+  @media (max-width:520px){.form-heading{gap:8px}.form-heading h2{font-size:.78rem}}
+  .card h2{
+    font-size:.95rem;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);margin:0 0 14px;font-weight:700;
+  }
+
+  /* ---------- Formulário ---------- */
+  .grid{
+    display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  }
+  .field{display:flex;flex-direction:column;gap:6px}
+  .cadastro-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (max-width:520px){.cadastro-grid{grid-template-columns:1fr}}
+  .field label{font-size:.8rem;font-weight:600;color:#334155}
+  .field input,.field select{
+    padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:.92rem;font-family:inherit;background:#fff;color:var(--ink);
+    transition:border-color .15s, box-shadow .15s;width:100%;
+    color-scheme:light;accent-color:var(--accent);
+  }
+  .field input:focus,.field select:focus,.filters input:focus,.filters select:focus{
+    outline:none;border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(234,88,12,.15);
+  }
+  .field select,.filters select{accent-color:var(--accent)}
+  .field select option,.filters select option{background:#fff;color:var(--ink)}
+  .field select option:checked,.filters select option:checked{background:var(--accent);color:#fff}
+  input[type="date"]{background-color:#fff;color:var(--ink)}
+  input[type="date"]::-webkit-calendar-picker-indicator{opacity:.55;filter:sepia(1) saturate(5) hue-rotate(345deg);width:14px;height:14px;cursor:pointer}
+  input[type="date"]::-webkit-calendar-picker-indicator:hover{opacity:.9}
+  ::selection{background:rgba(234,88,12,.2);color:var(--ink)}
+  .data-controls{display:flex;align-items:center;gap:6px}
+  .data-picker-btn{min-width:116px;justify-content:center;padding:11px 14px;font-size:.95rem}
+  .calendar-popup{display:none;margin-top:8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow);width:320px;max-width:min(320px,calc(100vw - 40px))}
+  .calendar-popup.show{display:block}
+  .calendar-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .calendar-month{font-weight:700;text-align:center;flex:1;font-size:1rem}
+  .calendar-nav{padding:9px 12px;font-size:1rem;min-width:42px;justify-content:center}
+  .calendar-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center}
+  .calendar-weekday{font-size:.78rem;font-weight:700;color:var(--muted);padding:7px 0}
+  .calendar-day{border:0;border-radius:9px;background:#fff;color:var(--ink);padding:10px 0;min-height:42px;font:inherit;font-size:.94rem;cursor:pointer}
+  .calendar-day:hover{background:#fff7ed;color:var(--accent-dark)}
+  .calendar-day.selected{background:var(--accent);color:#fff;font-weight:700}
+  .calendar-day.today{outline:1px solid var(--accent)}
+  .calendar-day.empty{visibility:hidden;pointer-events:none;padding:0}
+  .calendar-day:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .date-native-picker{display:none}
+  .custom-select{position:relative}
+  .select-trigger{width:100%;justify-content:space-between;text-align:left;background:#fff;border-color:var(--line);color:var(--ink)}
+  .select-trigger:hover,.select-trigger[aria-expanded="true"]{border-color:var(--accent);background:#fff7ed}
+  .select-options{display:none;position:absolute;z-index:20;top:calc(100% + 5px);left:0;right:0;padding:8px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow);max-height:280px;overflow-y:auto}
+  .select-options.show{display:block}
+  .select-option{display:block;width:100%;min-height:48px;padding:12px 14px;border:0;border-radius:9px;background:#fff;color:var(--ink);font:inherit;font-size:.98rem;text-align:left;cursor:pointer}
+  .select-option:hover,.select-option:focus{background:#fff7ed;color:var(--accent-dark);outline:none}
+  .select-option.selected{background:var(--accent);color:#fff;font-weight:700}
+  .field small{font-size:.72rem;color:var(--muted);min-height:1em}
+  .suggestions{display:none;border:1px solid var(--line);border-radius:9px;background:#fff;box-shadow:var(--shadow);max-height:180px;overflow-y:auto;margin-top:-2px}
+  .suggestions.show{display:block}
+  .suggestion{display:block;width:100%;padding:9px 12px;border:0;background:#fff;text-align:left;font:inherit;color:var(--ink);cursor:pointer}
+  .suggestion:hover,.suggestion:focus{background:#f8fafc;outline:none}
+
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+  #salvamentoStatus{font-size:.78rem;min-height:1em}
+  .btn{
+    border:1px solid transparent;border-radius:9px;padding:10px 18px;
+    font-size:.9rem;font-weight:600;font-family:inherit;cursor:pointer;
+    transition:.15s;display:inline-flex;align-items:center;gap:7px;
+  }
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-dark)}
+  .btn.ghost{background:#fff;border-color:var(--line);color:#334155}
+  .btn.ghost:hover{background:#f8fafc}
+  .btn.danger{background:#fff;border-color:#fecaca;color:var(--red)}
+  .btn.danger:hover{background:#fef2f2}
+
+  /* ---------- Cards resumo ---------- */
+  .stats{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;box-shadow:var(--shadow);
+  }
+  .stat .lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700}
+  .stat .val{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+  .stat .val small{font-size:.75rem;font-weight:600;color:var(--muted);letter-spacing:0}
+  .stat.in .val{color:var(--green)}
+
+  /* ---------- Filtros ---------- */
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .filters input,.filters select{
+    padding:9px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:.88rem;font-family:inherit;background:#fff;color:var(--ink);
+  }
+  .filters input{flex:1;min-width:170px}
+  .filters input:focus,.filters select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(234,88,12,.15)}
+  .filters .spacer{flex:1}
+  .report-menu{position:relative;display:flex;align-items:center}
+  .report-options{display:none;position:fixed;z-index:1000;left:12px;top:12px;right:auto;width:min(260px,calc(100vw - 24px));padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+  .report-options.show{display:flex;flex-direction:column;gap:7px;align-items:stretch}
+  .report-option{display:flex;width:100%;min-height:48px;box-sizing:border-box;justify-content:flex-start;text-align:left;padding:12px 14px;margin:0;font-size:.95rem;white-space:nowrap}
+
+  /* ---------- Tabela ---------- */
+  .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:980px}
+  thead th{
+    background:#f8fafc;text-align:left;padding:11px 12px;font-size:.74rem;
+    text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#fafbfc}
+  .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+  .qtd-in{color:var(--green)}
+
+  .badge{
+    display:inline-block;padding:3px 9px;border-radius:999px;
+    font-size:.72rem;font-weight:700;white-space:nowrap;
+  }
+  .b-pacote{background:#e0f2fe;color:#0369a1}
+  .b-amarrado{background:#ede9fe;color:#6d28d9}
+  .b-caixa{background:#dcfce7;color:#15803d}
+  .b-mercadoLivre{background:#fef3c7;color:#b45309}
+
+  .row-actions{display:flex;gap:6px}
+  .row-action{padding:6px 9px;font-size:.78rem}
+
+  .empty{padding:34px;text-align:center;color:var(--muted);font-size:.9rem}
+
+  /* ---------- Saldo ---------- */
+  .saldo-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+
+  @media (max-width:520px){
+    body{padding:14px 10px 40px}
+    header.top h1{font-size:1.2rem}
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <section class="card login-card" id="loginCard">
+    <h2>Acesso ao ESTOQUE</h2>
+    <p>Entre com seu e-mail autorizado para acessar e sincronizar os registros.</p>
+    <form id="loginForm" autocomplete="on">
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" type="email" autocomplete="username" required value="fernando@lisboa.com">
+      <label for="loginPassword">Senha</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <button class="btn primary" id="btnLogin" type="submit">Entrar</button>
+      <div class="login-status" id="loginStatus" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+  <div id="appContent" hidden>
+    <div class="session-bar"><span id="sessionEmail"></span><button class="btn ghost" id="btnLogout" type="button">Sair</button></div>
+  <header class="top">
+    <div>
+      <h1>ESTOQUE</h1>
+    </div>
+  </header>
+
+  <!-- ================= CADASTRO ================= -->
+  <section class="card">
+    <div class="form-heading">
+      <h2 id="formTitulo">Registro</h2>
+      <div class="date-field">
+        <div class="data-controls">
+          <button class="btn ghost data-picker-btn" id="btnCalendario" type="button" aria-label="Selecionar data" aria-expanded="false">dd/mm</button>
+          <input id="data" class="date-native-picker" type="date" tabindex="-1" aria-hidden="true">
+        </div>
+        <div id="calendarioBackdrop" class="calendar-backdrop"></div>
+        <div id="calendario" class="calendar-popup" aria-label="Selecionar data"></div>
+        <small id="dataHint"></small>
+      </div>
+    </div>
+    <form id="form" autocomplete="off">
+      <div class="grid cadastro-grid">
+
+        <div class="field">
+          <input id="nome" required placeholder="Peça" aria-label="Peça">
+          <small></small>
+        </div>
+
+        <div class="field">
+          <div class="custom-select" data-select="embalagem">
+            <button class="btn ghost select-trigger" id="embalagemTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">Embalagem</button>
+            <div class="select-options" id="embalagemOptions" role="listbox">
+              <button class="select-option" type="button" data-value="pacote" role="option">Pacote</button>
+              <button class="select-option" type="button" data-value="amarrado" role="option">Amarrado</button>
+              <button class="select-option" type="button" data-value="caixa" role="option">Caixa</button>
+              <button class="select-option" type="button" data-value="mercadoLivre" role="option">Mercado Livre</button>
+            </div>
+            <select id="embalagem" aria-hidden="true" tabindex="-1" style="display:none">
+              <option value="">Embalagem</option><option value="pacote">Pacote</option><option value="amarrado">Amarrado</option><option value="caixa">Caixa</option><option value="mercadoLivre">Mercado Livre</option>
+            </select>
+          </div>
+          <small id="embHint"></small>
+        </div>
+
+        <div class="field">
+          <div class="custom-select" data-select="bitola">
+            <button class="btn ghost select-trigger" id="bitolaTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">Bitola</button>
+            <div class="select-options" id="bitolaOptions" role="listbox">
+              <button class="select-option" type="button" data-value="3.8" role="option">3.8 mm</button>
+              <button class="select-option" type="button" data-value="4.2" role="option">4.2 mm</button>
+              <button class="select-option" type="button" data-value="5.0" role="option">5.0 mm</button>
+              <button class="select-option" type="button" data-value="6.0" role="option">6.0 mm</button>
+            </div>
+            <select id="bitola" aria-hidden="true" tabindex="-1" style="display:none">
+              <option value="">Bitola</option><option value="3.8">3.8 mm</option><option value="4.2">4.2 mm</option><option value="5.0">5.0 mm</option><option value="6.0">6.0 mm</option>
+            </select>
+          </div>
+          <small></small>
+        </div>
+
+        <div class="field">
+          <input id="quantidade" type="number" min="1" step="1" required placeholder="Quant/peças — peças por pacote" aria-label="Quant/peças, peças por pacote">
+          <small id="qtdHint">Peças em cada pacote.</small>
+        </div>
+
+        <div class="field">
+          <input id="quantidadePacotes" type="number" min="1" step="1" required placeholder="Quant/pacote" aria-label="Quant/pacote">
+          <small id="totalHint"></small>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary" id="btnSalvar">Registrar</button>
+        <small id="salvamentoStatus" role="status" aria-live="polite"></small>
+      </div>
+    </form>
+  </section>
+
+  <!-- ================= RESUMO ================= -->
+  <div class="stats">
+    <div class="stat in">
+      <div class="lbl">Total de peças registradas</div>
+      <div class="val" id="statSaldo">0 <small>peças</small></div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Pacotes registrados</div>
+      <div class="val" id="statPacotes">0</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">Registros</div>
+      <div class="val" id="statRegistros">0</div>
+    </div>
+  </div>
+
+  <!-- ================= ENTRADAS REGISTRADAS ================= -->
+  <section class="card">
+    <h2>Entradas registradas</h2>
+
+    <div class="filters" style="margin-bottom:14px">
+      <input id="fBusca" type="search" placeholder="Buscar em todos os campos…">
+      <div class="spacer"></div>
+      <div class="report-menu">
+        <button class="btn ghost" id="btnRelatorio" type="button" aria-haspopup="true" aria-expanded="false">Relatório</button>
+        <div class="report-options" id="opcoesRelatorio">
+          <button class="btn ghost report-option" id="btnExportarPDF" type="button">Exportar PDF</button>
+          <button class="btn ghost report-option" id="btnExportarExcel" type="button">Exportar Excel</button>
+          <button class="btn danger report-option" id="btnLimpar" type="button">Limpar tudo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Operador</th>
+            <th>Peça</th>
+            <th>Embalagem</th>
+            <th>Bitola</th>
+            <th style="text-align:right">Quant/peças</th>
+            <th style="text-align:right">Quant/pacote</th>
+            <th style="text-align:right">Total de peças</th>
+            <th style="text-align:center">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="vazio" hidden>Nenhum registro encontrado.</div>
+  </section>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DAS EMBALAGENS
+   ========================================================= */
+const EMBALAGENS = {
+  pacote: {
+    label: 'Pacote',
+    qtdPadrao: 500,
+    hint: 'Padrão: 500 peças por pacote (editável).'
+  },
+  amarrado: {
+    label: 'Amarrado',
+    qtdPadrao: null,
+    hint: 'Quantidade livre — sem padrão definido.'
+  },
+  caixa: {
+    label: 'Caixa',
+    qtdPadrao: 250,
+    hint: 'Padrão: 250 peças por pacote (editável).'
+  },
+  mercadoLivre: {
+    label: 'Mercado Livre',
+    qtdPadrao: 100,
+    hint: 'Padrão: 100 peças por pacote (editável).'
+  }
+};
+
+const STORAGE_KEY = 'estoque_estribos_v1';
+const OPERADOR_FIXO = 'Fernando';
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyB55UkbGsFYkUfzyyaEOpbw6lUnQmMtZus',
+  authDomain: 'estoque-b4865.firebaseapp.com',
+  databaseURL: 'https://estoque-b4865-default-rtdb.firebaseio.com',
+  projectId: 'estoque-b4865',
+  storageBucket: 'estoque-b4865.firebasestorage.app',
+  messagingSenderId: '659165960240',
+  appId: '1:659165960240:web:55e0516034341abff1f5f5',
+  measurementId: 'G-H64KCY1C4J'
+};
+const firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let usuarioAtual = null;
+let dadosProntos = false;
+
+/* =========================================================
+   ESTADO
+   ========================================================= */
+let registros = carregar().map(r => ({ ...r, operador: OPERADOR_FIXO }));
+let editandoId = null;
+
+/* =========================================================
+   ATALHOS DOM
+   ========================================================= */
+const $ = (id) => document.getElementById(id);
+
+const loginCard = $('loginCard');
+const loginForm = $('loginForm');
+const loginStatus = $('loginStatus');
+const appContent = $('appContent');
+const sessionEmail = $('sessionEmail');
+const form       = $('form');
+const inNome     = $('nome');
+const inBitola   = $('bitola');
+const inEmb      = $('embalagem');
+const inQtd      = $('quantidade');
+const inQtdPacotes = $('quantidadePacotes');
+const totalHint  = $('totalHint');
+const inData     = $('data');
+const btnCalendario = $('btnCalendario');
+const dataHint   = $('dataHint');
+const calendario = $('calendario');
+const calendarioBackdrop = $('calendarioBackdrop');
+const embHint    = $('embHint');
+let mesCalendario = new Date().getMonth();
+let anoCalendario = new Date().getFullYear();
+const qtdHint    = $('qtdHint');
+const btnSalvar  = $('btnSalvar');
+const salvamentoStatus = $('salvamentoStatus');
+const formTitulo = $('formTitulo');
+
+const tbody      = $('tbody');
+const vazio      = $('vazio');
+
+const fBusca     = $('fBusca');
+
+/* =========================================================
+   PERSISTÊNCIA
+   ========================================================= */
+function carregar(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    console.warn('Falha ao carregar dados locais:', e);
+    return [];
+  }
+}
+
+async function salvarStorage(){
+  if (!usuarioAtual || !dadosProntos) throw new Error('Entre na sua conta antes de salvar.');
+  const batch = db.batch();
+  registros.forEach(r => {
+    const ref = db.collection('registros').doc(String(r.id));
+    batch.set(ref, { ...r, operador: OPERADOR_FIXO, uid: usuarioAtual.uid }, { merge: true });
+  });
+  await batch.commit();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+}
+
+async function carregarRegistrosDaNuvem(user){
+  const snapshot = await db.collection('registros').where('uid', '==', user.uid).get();
+  if (snapshot.empty){
+    const locais = carregar().map(r => ({ ...r, operador: OPERADOR_FIXO }));
+    registros = locais;
+    dadosProntos = true;
+    if (locais.length) await salvarStorage();
+  } else {
+    registros = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, operador: OPERADOR_FIXO }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+  }
+  dadosProntos = true;
+  render();
+}
+
+loginForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  loginStatus.textContent = 'Entrando…';
+  try {
+    await auth.signInWithEmailAndPassword($('loginEmail').value.trim(), $('loginPassword').value);
+  } catch (err) {
+    console.error('Falha no login Firebase:', err);
+    loginStatus.textContent = 'Não foi possível entrar. Confira e-mail, senha e se o login por e-mail/senha está ativado no Firebase.';
+  }
+});
+
+$('btnLogout').addEventListener('click', () => auth.signOut());
+
+auth.onAuthStateChanged(async user => {
+  usuarioAtual = user || null;
+  dadosProntos = false;
+  if (!user){
+    loginCard.hidden = false;
+    appContent.hidden = true;
+    registros = [];
+    loginStatus.textContent = '';
+    render();
+    return;
+  }
+  loginCard.hidden = true;
+  appContent.hidden = false;
+  sessionEmail.textContent = user.email || '';
+  salvamentoStatus.textContent = 'Sincronizando registros…';
+  salvamentoStatus.style.color = 'var(--muted)';
+  try {
+    await carregarRegistrosDaNuvem(user);
+    salvamentoStatus.textContent = 'Registros sincronizados com o Firebase.';
+    salvamentoStatus.style.color = 'var(--green)';
+  } catch (err) {
+    console.error('Falha ao carregar Firestore:', err);
+    salvamentoStatus.textContent = 'Não foi possível acessar o banco. Confira as regras do Cloud Firestore.';
+    salvamentoStatus.style.color = 'var(--red)';
+  }
+});
+
+/* =========================================================
+   UTILITÁRIOS
+   ========================================================= */
+function hojeISO(){
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+function fmtData(iso){
+  if (!iso) return '—';
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+function definirData(iso){
+  inData.value = iso || hojeISO();
+  const [, mes, dia] = inData.value.split('-');
+  btnCalendario.textContent = `${dia}/${mes}`;
+  dataHint.textContent = '';
+  if (calendario.classList.contains('show')) desenharCalendario(Number(dia));
+}
+
+inData.addEventListener('change', () => definirData(inData.value));
+btnCalendario.addEventListener('click', () => {
+  const [ano, mes, dia] = (inData.value || hojeISO()).split('-').map(Number);
+  anoCalendario = ano;
+  mesCalendario = mes - 1;
+  desenharCalendario(dia);
+  calendario.classList.toggle('show');
+  calendarioBackdrop.classList.toggle('show', calendario.classList.contains('show'));
+  btnCalendario.setAttribute('aria-expanded', calendario.classList.contains('show') ? 'true' : 'false');
+});
+
+function desenharCalendario(diaSelecionado){
+  const primeiroDia = new Date(anoCalendario, mesCalendario, 1).getDay();
+  const diasNoMes = new Date(anoCalendario, mesCalendario + 1, 0).getDate();
+  const selecionada = (inData.value || hojeISO()).split('-').map(Number);
+  const hoje = hojeISO().split('-').map(Number);
+  const nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  let html = `<div class="calendar-head">
+    <button type="button" class="btn ghost calendar-nav" data-mes="-1" aria-label="Mês anterior">‹</button>
+    <div class="calendar-month">${nomesMeses[mesCalendario]} ${anoCalendario}</div>
+    <button type="button" class="btn ghost calendar-nav" data-mes="1" aria-label="Próximo mês">›</button>
+  </div><div class="calendar-days">`;
+  for (const nome of ['D','S','T','Q','Q','S','S']) html += `<div class="calendar-weekday">${nome}</div>`;
+  for (let i = 0; i < primeiroDia; i++) html += '<span class="calendar-day empty"></span>';
+  for (let d = 1; d <= diasNoMes; d++){
+    const isSelected = d === (diaSelecionado || selecionada[2]) && mesCalendario + 1 === selecionada[1] && anoCalendario === selecionada[0];
+    const isToday = d === hoje[2] && mesCalendario + 1 === hoje[1] && anoCalendario === hoje[0];
+    html += `<button type="button" class="calendar-day${isSelected ? ' selected' : ''}${isToday ? ' today' : ''}" data-dia="${d}" aria-label="${d} de ${nomesMeses[mesCalendario]} de ${anoCalendario}">${d}</button>`;
+  }
+  calendario.innerHTML = html + '</div>';
+}
+
+calendario.addEventListener('click', e => {
+  const nav = e.target.closest('[data-mes]');
+  if (nav){
+    mesCalendario += Number(nav.dataset.mes);
+    if (mesCalendario < 0){mesCalendario = 11; anoCalendario--;}
+    if (mesCalendario > 11){mesCalendario = 0; anoCalendario++;}
+    desenharCalendario();
+    return;
+  }
+  const botaoDia = e.target.closest('[data-dia]');
+  if (!botaoDia) return;
+  const dia = Number(botaoDia.dataset.dia);
+  definirData(`${anoCalendario}-${String(mesCalendario + 1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`);
+  calendario.classList.remove('show');
+  calendarioBackdrop.classList.remove('show');
+  btnCalendario.setAttribute('aria-expanded','false');
+});
+calendarioBackdrop.addEventListener('click', () => {
+  calendario.classList.remove('show');
+  calendarioBackdrop.classList.remove('show');
+  btnCalendario.setAttribute('aria-expanded','false');
+});
+function obterDataFormulario(){
+  return inData.value || null;
+}
+
+function fmtNum(n){
+  return Number(n || 0).toLocaleString('pt-BR');
+}
+
+function novoId(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function atualizarVisualSelect(id){
+  const select = $(id);
+  const trigger = $(`${id}Trigger`);
+  const options = $(`${id}Options`);
+  if (!select || !trigger || !options) return;
+  const valor = select.value;
+  const option = [...select.options].find(o => o.value === valor);
+  trigger.textContent = option?.textContent || (id === 'embalagem' ? 'Embalagem' : 'Bitola');
+  options.querySelectorAll('.select-option').forEach(btn => {
+    const selecionada = btn.dataset.value === valor;
+    btn.classList.toggle('selected', selecionada);
+    btn.setAttribute('aria-selected', selecionada ? 'true' : 'false');
+  });
+}
+
+['embalagem','bitola'].forEach(id => {
+  const trigger = $(`${id}Trigger`);
+  const options = $(`${id}Options`);
+  const select = $(id);
+  trigger.addEventListener('click', () => {
+    const abrir = !options.classList.contains('show');
+    document.querySelectorAll('.select-options.show').forEach(menu => menu.classList.remove('show'));
+    document.querySelectorAll('.select-trigger[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded','false'));
+    options.classList.toggle('show', abrir);
+    trigger.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  });
+  options.addEventListener('click', e => {
+    const opcao = e.target.closest('.select-option');
+    if (!opcao) return;
+    select.value = opcao.dataset.value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    atualizarVisualSelect(id);
+    options.classList.remove('show');
+    trigger.setAttribute('aria-expanded','false');
+  });
+  select.addEventListener('change', () => atualizarVisualSelect(id));
+  atualizarVisualSelect(id);
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('.custom-select')) return;
+  document.querySelectorAll('.select-options.show').forEach(menu => menu.classList.remove('show'));
+  document.querySelectorAll('.select-trigger[aria-expanded="true"]').forEach(btn => btn.setAttribute('aria-expanded','false'));
+});
+
+const btnRelatorio = $('btnRelatorio');
+const opcoesRelatorio = $('opcoesRelatorio');
+btnRelatorio.addEventListener('click', () => {
+  const abrir = !opcoesRelatorio.classList.contains('show');
+  opcoesRelatorio.classList.toggle('show', abrir);
+  btnRelatorio.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  if (abrir){
+    const ancora = btnRelatorio.getBoundingClientRect();
+    const largura = Math.min(220, window.innerWidth - 24);
+    const esquerda = Math.max(12, Math.min(ancora.left, window.innerWidth - largura - 12));
+    const abaixo = ancora.bottom + 6;
+    const alturaEstimada = 210;
+    const topo = abaixo + alturaEstimada <= window.innerHeight ? abaixo : Math.max(12, ancora.top - alturaEstimada - 6);
+    opcoesRelatorio.style.left = `${esquerda}px`;
+    opcoesRelatorio.style.top = `${topo}px`;
+  }
+});
+document.addEventListener('click', e => {
+  if (e.target.closest('.report-menu')) return;
+  opcoesRelatorio.classList.remove('show');
+  btnRelatorio.setAttribute('aria-expanded','false');
+});
+opcoesRelatorio.addEventListener('click', e => {
+  if (e.target.closest('button')){
+    opcoesRelatorio.classList.remove('show');
+    btnRelatorio.setAttribute('aria-expanded','false');
+  }
+});
+
+/* =========================================================
+   PADRÕES AUTOMÁTICOS DA EMBALAGEM
+   ========================================================= */
+inEmb.addEventListener('change', () => {
+  const cfg = EMBALAGENS[inEmb.value];
+
+  if (!cfg){
+    embHint.textContent = '';
+    qtdHint.textContent = '';
+    return;
+  }
+
+  embHint.textContent = cfg.hint;
+
+  if (cfg.qtdPadrao) inQtd.value = cfg.qtdPadrao;
+  qtdHint.textContent = cfg.qtdPadrao
+    ? `Sugerido: ${fmtNum(cfg.qtdPadrao)} peças por pacote (editável).`
+    : 'Informe as peças por pacote.';
+  atualizarTotal();
+});
+
+
+function atualizarTotal(){
+  const pecas = Number(inQtd.value);
+  const pacotes = Number(inQtdPacotes.value);
+  totalHint.textContent = pecas > 0 && pacotes > 0
+    ? `Total: ${fmtNum(pecas * pacotes)} peças.`
+    : '';
+}
+
+[inQtd, inQtdPacotes].forEach(campo => campo.addEventListener('input', atualizarTotal));
+
+/* =========================================================
+   FORMULÁRIO — SALVAR / EDITAR / CANCELAR
+   ========================================================= */
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!usuarioAtual || !dadosProntos){ alert('Aguarde a conexão com o Firebase antes de registrar.'); return; }
+  const registrosAntes = [...registros];
+
+  const operador  = OPERADOR_FIXO;
+  const nome      = inNome.value.trim();
+  const bitola    = inBitola.value;
+  const embalagem = inEmb.value;
+  const quantidade= Number(inQtd.value);
+  const quantidadePacotes = Number(inQtdPacotes.value);
+  const data      = obterDataFormulario();
+
+  if (!nome || !bitola || !embalagem || !data){
+    alert('Preencha data, peça, embalagem e bitola.');
+    return;
+  }
+  if (!Number.isInteger(quantidade) || quantidade <= 0){
+    alert('Informe a quantidade de peças por pacote (maior que zero).');
+    return;
+  }
+  if (!Number.isInteger(quantidadePacotes) || quantidadePacotes <= 0){
+    alert('Informe uma quantidade de pacotes válida (maior que zero).');
+    return;
+  }
+  const totalPecas = quantidade * quantidadePacotes;
+
+  if (editandoId){
+    const idx = registros.findIndex(r => r.id === editandoId);
+    if (idx > -1){
+      registros[idx] = {
+        ...registros[idx],
+        operador, nome, embalagem, bitola, quantidade, quantidadePorPacote: quantidade, quantidadePacotes, totalPecas, data,
+        atualizadoEm: new Date().toISOString()
+      };
+    }
+    encerrarEdicao();
+  } else {
+    registros.push({
+      id: novoId(),
+      operador, nome, embalagem, bitola, quantidade, quantidadePorPacote: quantidade, quantidadePacotes, totalPecas, data,
+      criadoEm: new Date().toISOString()
+    });
+  }
+
+  try {
+    await salvarStorage();
+    salvamentoStatus.textContent = 'Registro salvo e sincronizado com o Firebase.';
+    salvamentoStatus.style.color = 'var(--green)';
+    limparFormulario();
+    render();
+  } catch (err) {
+    console.error('Falha ao salvar registro no Firebase:', err);
+    registros = registrosAntes;
+    salvamentoStatus.textContent = 'Não foi possível salvar no Firebase. Os dados do formulário foram mantidos.';
+    salvamentoStatus.style.color = 'var(--red)';
+    render();
+  }
+});
+
+function limparFormulario(){
+  inNome.value = '';
+  inQtd.value  = '';
+  inQtdPacotes.value = '';
+  definirData(hojeISO());
+  qtdHint.textContent = '';
+  totalHint.textContent = '';
+  // mantém o tipo de embalagem para agilizar lançamentos em sequência
+}
+
+function iniciarEdicao(id){
+  const r = registros.find(x => x.id === id);
+  if (!r) return;
+
+  editandoId = id;
+  inNome.value     = r.nome;
+  inBitola.value   = r.bitola || '';
+  inEmb.value      = r.embalagem;
+  atualizarVisualSelect('bitola');
+  atualizarVisualSelect('embalagem');
+  inQtd.value      = r.quantidadePorPacote ?? r.quantidade ?? '';
+  inQtdPacotes.value = r.quantidadePacotes ?? 1;
+  definirData(r.data || hojeISO());
+
+  const cfg = EMBALAGENS[r.embalagem];
+  embHint.textContent = cfg ? cfg.hint : '';
+  qtdHint.textContent = '';
+  atualizarTotal();
+
+  formTitulo.textContent = 'Editando registro';
+  btnSalvar.textContent  = 'Salvar alterações';
+
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  inNome.focus();
+}
+
+function encerrarEdicao(){
+  editandoId = null;
+  formTitulo.textContent = 'Registro';
+  btnSalvar.textContent  = 'Registrar';
+}
+
+/* =========================================================
+   TABELA — AÇÕES
+   ========================================================= */
+tbody.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-acao]');
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+
+  if (btn.dataset.acao === 'editar'){
+    iniciarEdicao(id);
+  }
+
+  if (btn.dataset.acao === 'excluir'){
+    const r = registros.find(x => x.id === id);
+    if (!r) return;
+    if (confirm(`Excluir o registro de "${r.nome}" (${fmtNum(r.quantidade)} peças)?`)){
+      const antes = [...registros];
+      registros = registros.filter(x => x.id !== id);
+      if (editandoId === id) { encerrarEdicao(); form.reset(); atualizarVisualSelect('embalagem'); atualizarVisualSelect('bitola'); definirData(hojeISO()); }
+      try { await db.collection('registros').doc(String(id)).delete(); await salvarStorage(); render(); }
+      catch (err) { console.error('Falha ao excluir no Firebase:', err); registros = antes; alert('Não foi possível excluir no Firebase. Confira a conexão e as regras.'); render(); }
+    }
+  }
+});
+
+/* =========================================================
+   FILTROS
+   ========================================================= */
+fBusca.addEventListener('input', render);
+
+function registrosFiltrados(){
+  const q = fBusca.value.trim().toLocaleLowerCase('pt-BR');
+
+  return registros.filter(r => {
+    if (q){
+      const quantidade = Number(r.quantidadePorPacote ?? r.quantidade) || 0;
+      const pacotes = Number(r.quantidadePacotes) || 1;
+      const total = Number(r.totalPecas) || quantidade * pacotes;
+      const campos = [
+        fmtData(r.data),
+        r.data,
+        r.operador || OPERADOR_FIXO,
+        r.nome,
+        EMBALAGENS[r.embalagem]?.label || r.embalagem,
+        r.embalagem,
+        r.bitola ? `${r.bitola} mm` : '',
+        r.bitola,
+        quantidade,
+        fmtNum(quantidade),
+        pacotes,
+        fmtNum(pacotes),
+        total,
+        fmtNum(total)
+      ];
+      const txt = campos.join(' ').toLocaleLowerCase('pt-BR');
+      if (!txt.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const d = (b.data || '').localeCompare(a.data || '');
+    if (d !== 0) return d;
+    return (b.criadoEm || '').localeCompare(a.criadoEm || '');
+  });
+}
+
+/* =========================================================
+   RENDERIZAÇÃO
+   ========================================================= */
+function render(){
+  renderTabela();
+  renderStats();
+}
+
+function renderTabela(){
+  const lista = registrosFiltrados();
+  tbody.innerHTML = '';
+
+  vazio.hidden = lista.length > 0;
+
+  const frag = document.createDocumentFragment();
+
+  lista.forEach(r => {
+    const cfg = EMBALAGENS[r.embalagem] || { label: r.embalagem };
+    const tr = document.createElement('tr');
+
+
+    const pecasPorPacote = Number(r.quantidadePorPacote ?? r.quantidade) || 0;
+    const qtdPacotes = Number(r.quantidadePacotes) || 1;
+    const totalPecas = Number(r.totalPecas) || pecasPorPacote * qtdPacotes;
+
+    tr.innerHTML = `
+      <td>${fmtData(r.data)}</td>
+      <td>${escapeHtml(r.operador)}</td>
+      <td>${escapeHtml(r.nome)}</td>
+      <td><span class="badge b-${r.embalagem}">${escapeHtml(cfg.label)}</span></td>
+      <td>${r.bitola ? `${escapeHtml(r.bitola)} mm` : '—'}</td>
+      <td class="num">${fmtNum(pecasPorPacote)}</td>
+      <td class="num">${fmtNum(qtdPacotes)}</td>
+      <td class="num qtd-in">${fmtNum(totalPecas)}</td>
+      <td>
+        <div class="row-actions" style="justify-content:center">
+          <button class="btn ghost row-action" data-acao="editar" data-id="${r.id}" type="button">Editar</button>
+          <button class="btn danger row-action" data-acao="excluir" data-id="${r.id}" type="button">Excluir</button>
+        </div>
+      </td>
+    `;
+    frag.appendChild(tr);
+  });
+
+  tbody.appendChild(frag);
+}
+
+function renderStats(){
+  const total = registros.reduce((soma, r) => soma + (Number(r.totalPecas) || (Number(r.quantidadePorPacote ?? r.quantidade) || 0) * (Number(r.quantidadePacotes) || 1)), 0);
+  const pacotes = registros.reduce((soma, r) => soma + (Number(r.quantidadePacotes) || 1), 0);
+
+  $('statSaldo').innerHTML       = `${fmtNum(total)} <small>peças</small>`;
+  $('statPacotes').textContent   = fmtNum(pacotes);
+  $('statRegistros').textContent = fmtNum(registros.length);
+}
+
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* =========================================================
+   EXPORTAR PDF E EXCEL
+   ========================================================= */
+function dadosParaExportacao(){
+  return registrosFiltrados().map(r => {
+    const pecas = Number(r.quantidadePorPacote ?? r.quantidade) || 0;
+    const pacotes = Number(r.quantidadePacotes) || 1;
+    return [
+      fmtData(r.data),
+      r.operador || OPERADOR_FIXO,
+      r.nome,
+      EMBALAGENS[r.embalagem]?.label || r.embalagem,
+      r.bitola ? `${r.bitola} mm` : '',
+      pecas,
+      pacotes,
+      Number(r.totalPecas) || pecas * pacotes
+    ];
+  });
+}
+
+const CABECALHOS_EXPORTACAO = ['Data','Operador','Peça','Embalagem','Bitola','Quant/peças','Quant/pacote','Total de peças'];
+
+$('btnExportarExcel').addEventListener('click', () => {
+  const dados = dadosParaExportacao();
+  if (!dados.length){
+    alert('Não há registros para exportar com os filtros atuais.');
+    return;
+  }
+  const xmlEscapar = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+  const colLetra = n => { let out=''; for(n++; n; n=Math.floor((n-1)/26)) out=String.fromCharCode(65+(n-1)%26)+out; return out; };
+  const celula = (ref, valor, estilo=0, numerica=false) => numerica
+    ? `<c r="${ref}" s="${estilo}"><v>${Number(valor)||0}</v></c>`
+    : `<c r="${ref}" s="${estilo}" t="inlineStr"><is><t xml:space="preserve">${xmlEscapar(valor)}</t></is></c>`;
+  const linha = (n, valores, estiloPorColuna=[]) => `<row r="${n}">${valores.map((v,i)=>celula(`${colLetra(i)}${n}`,v,estiloPorColuna[i]||0,n>=2 && i>=5)).join('')}</row>`;
+  const totalPacotes = dados.reduce((soma, d) => soma + (Number(d[6])||0),0);
+  const totalPecas = dados.reduce((soma, d) => soma + (Number(d[7])||0),0);
+  const linhasXml = [
+    linha(1,CABECALHOS_EXPORTACAO,CABECALHOS_EXPORTACAO.map(()=>1)),
+    ...dados.map((d,i)=>linha(i+2,d,d.map((_,c)=>c>=5?(i%2?3:2):(i%2?3:0)))),
+    `<row r="${dados.length+2}">${celula(`A${dados.length+2}`,'TOTAIS',4)}${[1,2,3,4,5].map(i=>celula(`${colLetra(i)}${dados.length+2}`,'',4)).join('')}${celula(`G${dados.length+2}`,totalPacotes,5,true)}${celula(`H${dados.length+2}`,totalPecas,5,true)}</row>`
+  ].join('');
+  const widths=[13,17,28,18,12,16,16,18].map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('');
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="10"/><name val="Arial"/><color rgb="FF172033"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FFFFFFFF"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FF9A3412"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF334155"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left/><right/><top/><bottom style="thin"><color rgb="FFE2E8F0"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/><xf numFmtId="3" fontId="0" fillId="0" borderId="1" applyNumberFormat="1" applyBorder="1"/><xf numFmtId="3" fontId="0" fillId="3" borderId="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/><xf numFmtId="0" fontId="0" fillId="3" borderId="1" applyFill="1" applyBorder="1"/><xf numFmtId="3" fontId="2" fillId="3" borderId="1" applyFont="1" applyNumberFormat="1" applyFill="1" applyBorder="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  const lastData=dados.length+1, lastRow=dados.length+2;
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:H${lastRow}"/><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths}</cols><sheetData>${linhasXml}</sheetData><autoFilter ref="A1:H${lastData}"/><pageSetup orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>`;
+  const files={
+    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Estoque" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':sheet,'xl/styles.xml':styles
+  };
+  const encoder=new TextEncoder(), crcTable=new Uint32Array(256);
+  for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);crcTable[n]=c>>>0;}
+  const crc32=bytes=>{let c=0xFFFFFFFF;for(const b of bytes)c=crcTable[(c^b)&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;};
+  const u16=n=>[n&255,(n>>>8)&255], u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255], enc=t=>Array.from(encoder.encode(t));
+  const local=[],central=[];let offset=0;
+  for(const[name,content]of Object.entries(files)){
+    const nb=enc(name),data=enc(content),crc=crc32(data);
+    const lh=[...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0),...nb];
+    local.push(...lh,...data);
+    central.push(...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(nb.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset),...nb);
+    offset+=lh.length+data.length;
+  }
+  const zipEnd=[...u32(0x06054b50),...u16(0),...u16(0),...u16(Object.keys(files).length),...u16(Object.keys(files).length),...u32(central.length),...u32(offset),...u16(0)];
+  const blob=new Blob([new Uint8Array([...local,...central,...zipEnd])],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`estoque-estribos-${hojeISO()}.xlsx`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+$('btnExportarPDF').addEventListener('click', () => {
+  const dados = dadosParaExportacao();
+  if (!dados.length){
+    alert('Não há registros para exportar com os filtros atuais.');
+    return;
+  }
+  const popup = window.open('', '_blank');
+  if (!popup){
+    alert('O navegador bloqueou a janela do PDF. Permita pop-ups para este app e tente novamente.');
+    return;
+  }
+  const escapeHtmlLocal = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const totalPecas = dados.reduce((soma, linha) => soma + (Number(linha[7]) || 0), 0);
+  const totalPacotes = dados.reduce((soma, linha) => soma + (Number(linha[6]) || 0), 0);
+  const linhas = dados.map((linha, index) => `<tr>${linha.map((valor, col) => `<td class="${col >= 5 ? 'num' : ''}">${escapeHtmlLocal(valor)}</td>`).join('')}</tr>`).join('');
+  const cabecalhos = CABECALHOS_EXPORTACAO.map(h => `<th>${escapeHtmlLocal(h)}</th>`).join('');
+  const filtros = fBusca.value.trim() ? `Pesquisa: ${escapeHtmlLocal(fBusca.value.trim())}` : 'Todos os registros';
+  popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de Estoque</title><style>
+    :root{color-scheme:light}*{box-sizing:border-box}body{font:11px Arial,Helvetica,sans-serif;color:#172033;margin:0;background:#fff}.page{max-width:1400px;margin:0 auto;padding:28px 30px}.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #ea580c;padding-bottom:14px;margin-bottom:18px}.brand{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c2410c;font-weight:700;margin-bottom:5px}h1{font-size:24px;letter-spacing:.4px;margin:0;color:#0f172a}.subtitle{font-size:11px;color:#64748b;margin-top:5px}.date{text-align:right;color:#475569;font-size:10px}.cards{display:flex;gap:10px;margin:16px 0 20px}.card{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:11px 13px;background:#f8fafc}.card label{display:block;font-size:9px;letter-spacing:.7px;text-transform:uppercase;color:#64748b;font-weight:700}.card strong{display:block;font-size:18px;margin-top:5px;color:#0f172a}.section-title{font-size:12px;font-weight:700;margin:18px 0 8px}.meta{font-size:10px;color:#64748b;margin-bottom:8px}table{width:100%;border-collapse:collapse;table-layout:auto}thead{display:table-header-group}th{background:#f1f5f9;color:#475569;text-align:left;font-size:8px;letter-spacing:.4px;text-transform:uppercase;padding:9px 7px;border-bottom:2px solid #cbd5e1}td{padding:8px 7px;border-bottom:1px solid #e8edf3;font-size:9px}tbody tr:nth-child(even){background:#fafbfc}tbody tr{page-break-inside:avoid}.num{text-align:right;font-variant-numeric:tabular-nums}.total-row td{background:#fff7ed;border-top:2px solid #ea580c;font-weight:700;color:#9a3412}.footer{margin-top:18px;padding-top:8px;border-top:1px solid #e2e8f0;color:#94a3b8;font-size:9px;display:flex;justify-content:space-between}.print{position:fixed;top:14px;right:14px;border:0;border-radius:6px;background:#ea580c;color:white;padding:10px 15px;font-weight:700;cursor:pointer}@page{size:landscape;margin:12mm}@media print{.page{padding:0;max-width:none}.print{display:none}.card{background:#f8fafc!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}th{background:#f1f5f9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    </style></head><body><button class="print" onclick="window.print()">Salvar como PDF</button><main class="page"><header class="top"><div><div class="brand">Controle de estoque</div><h1>ESTOQUE</h1><div class="subtitle">Relatório de entradas de estribos</div></div><div class="date"><strong>Emitido em</strong><br>${escapeHtmlLocal(fmtData(hojeISO()))}</div></header><section class="cards"><div class="card"><label>Registros</label><strong>${dados.length}</strong></div><div class="card"><label>Pacotes</label><strong>${fmtNum(totalPacotes)}</strong></div><div class="card"><label>Total de peças</label><strong>${fmtNum(totalPecas)}</strong></div></section><div class="section-title">Movimentações registradas</div><div class="meta">${filtros}</div><table><thead><tr>${cabecalhos}</tr></thead><tbody>${linhas}<tr class="total-row"><td colspan="6">Totais</td><td class="num">${fmtNum(totalPacotes)}</td><td class="num">${fmtNum(totalPecas)}</td></tr></tbody></table><footer class="footer"><span>ESTOQUE · Controle de entradas</span><span>${dados.length} registros</span></footer></main><script>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script></body></html>`);
+  popup.document.close();
+});
+
+/* =========================================================
+   LIMPAR TUDO
+   ========================================================= */
+$('btnLimpar').addEventListener('click', async () => {
+  if (!registros.length){
+    alert('Não há registros para limpar.');
+    return;
+  }
+  if (!confirm('Isso vai apagar TODOS os registros do estoque. Deseja continuar?')) return;
+  if (!confirm('Confirmação final: apagar todos os registros permanentemente?')) return;
+
+  const anteriores = [...registros];
+  registros = [];
+  encerrarEdicao();
+  try { const snap = await db.collection('registros').where('uid','==',usuarioAtual.uid).get(); const batch = db.batch(); snap.docs.forEach(doc => batch.delete(doc.ref)); await batch.commit(); localStorage.setItem(STORAGE_KEY, '[]'); render(); }
+  catch (err) { console.error('Falha ao limpar Firebase:', err); registros = anteriores; alert('Não foi possível limpar os registros no Firebase.'); render(); }
+});
+
+/* =========================================================
+   INICIALIZAÇÃO
+   ========================================================= */
+(function init(){
+  definirData(hojeISO());
+  render();
+})();
+</script>
+</body>
+</html>
