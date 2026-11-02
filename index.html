@@ -467,15 +467,31 @@ function carregar(){
   }
 }
 
-async function salvarStorage(){
+async function salvarRegistroNoFirebase(registro){
   if (!usuarioAtual || !dadosProntos) throw new Error('Entre na sua conta antes de salvar.');
-  const batch = db.batch();
-  registros.forEach(r => {
-    const ref = db.collection('registros').doc(String(r.id));
-    batch.set(ref, { ...r, operador: OPERADOR_FIXO, uid: usuarioAtual.uid }, { merge: true });
-  });
-  await batch.commit();
+  await db.collection('registros').doc(String(registro.id)).set({
+    ...registro,
+    operador: OPERADOR_FIXO,
+    uid: usuarioAtual.uid
+  }, { merge: true });
+}
+
+function salvarCacheLocal(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+}
+
+async function migrarRegistrosLocais(registrosLocais){
+  if (!usuarioAtual || !dadosProntos) throw new Error('Entre na sua conta antes da migração.');
+  const tamanhoLote = 400;
+  for (let inicio = 0; inicio < registrosLocais.length; inicio += tamanhoLote){
+    const batch = db.batch();
+    registrosLocais.slice(inicio, inicio + tamanhoLote).forEach(r => {
+      const ref = db.collection('registros').doc(String(r.id));
+      batch.set(ref, { ...r, operador: OPERADOR_FIXO, uid: usuarioAtual.uid }, { merge: true });
+    });
+    await batch.commit();
+  }
+  salvarCacheLocal();
 }
 
 async function carregarRegistrosDaNuvem(user){
@@ -484,7 +500,7 @@ async function carregarRegistrosDaNuvem(user){
     const locais = carregar().map(r => ({ ...r, operador: OPERADOR_FIXO }));
     registros = locais;
     dadosProntos = true;
-    if (locais.length) await salvarStorage();
+    if (locais.length) await migrarRegistrosLocais(locais);
   } else {
     registros = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, operador: OPERADOR_FIXO }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
@@ -794,6 +810,7 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!usuarioAtual || !dadosProntos){ alert('Aguarde a conexão com o Firebase antes de registrar.'); return; }
   const registrosAntes = [...registros];
+  let registroParaSalvar = null;
 
   const operador  = OPERADOR_FIXO;
   const nome      = inNome.value.trim();
@@ -825,18 +842,21 @@ form.addEventListener('submit', async (e) => {
         operador, nome, embalagem, bitola, quantidade, quantidadePorPacote: quantidade, quantidadePacotes, totalPecas, data,
         atualizadoEm: new Date().toISOString()
       };
+      registroParaSalvar = registros[idx];
     }
     encerrarEdicao();
   } else {
-    registros.push({
+    registroParaSalvar = {
       id: novoId(),
       operador, nome, embalagem, bitola, quantidade, quantidadePorPacote: quantidade, quantidadePacotes, totalPecas, data,
       criadoEm: new Date().toISOString()
-    });
+    };
+    registros.push(registroParaSalvar);
   }
 
   try {
-    await salvarStorage();
+    await salvarRegistroNoFirebase(registroParaSalvar);
+    salvarCacheLocal();
     salvamentoStatus.textContent = 'Registro salvo e sincronizado com o Firebase.';
     salvamentoStatus.style.color = 'var(--green)';
     limparFormulario();
@@ -912,7 +932,7 @@ tbody.addEventListener('click', async (e) => {
       const antes = [...registros];
       registros = registros.filter(x => x.id !== id);
       if (editandoId === id) { encerrarEdicao(); form.reset(); atualizarVisualSelect('embalagem'); atualizarVisualSelect('bitola'); definirData(hojeISO()); }
-      try { await db.collection('registros').doc(String(id)).delete(); await salvarStorage(); render(); }
+      try { await db.collection('registros').doc(String(id)).delete(); salvarCacheLocal(); render(); }
       catch (err) { console.error('Falha ao excluir no Firebase:', err); registros = antes; alert('Não foi possível excluir no Firebase. Confira a conexão e as regras.'); render(); }
     }
   }
