@@ -31,7 +31,10 @@
   .login-card h2{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.15rem}
   .login-card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;font:inherit;margin:6px 0 12px}
   .login-status{min-height:1.2em;color:var(--red);font-size:.85rem}
-  .session-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-bottom:12px;color:var(--muted);font-size:.82rem}
+  .session-bar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-bottom:12px;color:var(--muted);font-size:.82rem}
+  .connection-status{display:inline-flex;align-items:center;gap:7px;font-weight:700}
+  .connection-dot{width:11px;height:11px;border-radius:50%;background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.13)}
+  .connection-dot.online{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.14)}
 
   header.top{
     display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
@@ -198,7 +201,6 @@
 <div class="wrap">
   <section class="card login-card" id="loginCard">
     <h2>Acesso ao ESTOQUE</h2>
-    <p>Entre com seu e-mail autorizado para acessar e sincronizar os registros.</p>
     <form id="loginForm" autocomplete="on">
       <label for="loginEmail">E-mail</label>
       <input id="loginEmail" type="email" autocomplete="username" required value="fernando@lisboa.com">
@@ -209,12 +211,30 @@
     </form>
   </section>
   <div id="appContent" hidden>
-    <div class="session-bar"><span id="sessionEmail"></span><button class="btn ghost" id="btnLogout" type="button">Sair</button></div>
+    <div class="session-bar"><span class="connection-status" role="status" aria-live="polite"><span id="connectionDot" class="connection-dot"></span><span id="connectionText">Off-line</span></span><button class="btn ghost" id="btnLogout" type="button">Sair</button></div>
   <header class="top">
     <div>
       <h1>ESTOQUE</h1>
     </div>
   </header>
+
+  <!-- ================= PRODUÇÃO POR DIA ================= -->
+  <section class="card">
+    <h2>Produção do dia</h2>
+    <div class="table-wrap">
+      <table style="min-width:520px">
+        <thead>
+          <tr>
+            <th style="text-align:right">Registros</th>
+            <th style="text-align:right">Pacotes</th>
+            <th style="text-align:right">Peças produzidas</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyProducaoDia"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="producaoDiaVazia" hidden>Nenhuma produção registrada.</div>
+  </section>
 
   <!-- ================= CADASTRO ================= -->
   <section class="card">
@@ -303,25 +323,6 @@
       <div class="val" id="statRegistros">0</div>
     </div>
   </div>
-
-  <!-- ================= PRODUÇÃO POR DIA ================= -->
-  <section class="card">
-    <h2>Produção por dia</h2>
-    <div class="table-wrap">
-      <table style="min-width:520px">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th style="text-align:right">Registros</th>
-            <th style="text-align:right">Pacotes</th>
-            <th style="text-align:right">Total produzido (peças)</th>
-          </tr>
-        </thead>
-        <tbody id="tbodyProducaoDia"></tbody>
-      </table>
-    </div>
-    <div class="empty" id="producaoDiaVazia" hidden>Nenhuma produção registrada.</div>
-  </section>
 
   <!-- ================= ENTRADAS REGISTRADAS ================= -->
   <section class="card">
@@ -427,7 +428,8 @@ const loginCard = $('loginCard');
 const loginForm = $('loginForm');
 const loginStatus = $('loginStatus');
 const appContent = $('appContent');
-const sessionEmail = $('sessionEmail');
+const connectionDot = $('connectionDot');
+const connectionText = $('connectionText');
 const form       = $('form');
 const inNome     = $('nome');
 const inBitola   = $('bitola');
@@ -520,6 +522,14 @@ loginForm.addEventListener('submit', async e => {
   }
 });
 
+function definirConexaoOnline(online){
+  connectionDot.classList.toggle('online', Boolean(online));
+  connectionText.textContent = online ? 'Online' : 'Off-line';
+}
+
+window.addEventListener('online', () => definirConexaoOnline(Boolean(usuarioAtual && dadosProntos)));
+window.addEventListener('offline', () => definirConexaoOnline(false));
+
 function chaveAtividade(uid){ return `estoque_ultima_atividade_${uid}`; }
 
 function limparTemporizadorInatividade(){
@@ -576,6 +586,7 @@ auth.onAuthStateChanged(async user => {
   dadosProntos = false;
   if (!user){
     limparTemporizadorInatividade();
+    definirConexaoOnline(false);
     loginCard.hidden = false;
     appContent.hidden = true;
     registros = [];
@@ -595,14 +606,16 @@ auth.onAuthStateChanged(async user => {
   iniciarTemporizadorInatividade();
   loginCard.hidden = true;
   appContent.hidden = false;
-  sessionEmail.textContent = user.email || '';
+  definirConexaoOnline(false);
   salvamentoStatus.textContent = 'Sincronizando registros…';
   salvamentoStatus.style.color = 'var(--muted)';
   try {
     await carregarRegistrosDaNuvem(user);
+    definirConexaoOnline(Boolean(navigator.onLine));
     salvamentoStatus.textContent = 'Registros sincronizados com o Firebase.';
     salvamentoStatus.style.color = 'var(--green)';
   } catch (err) {
+    definirConexaoOnline(false);
     console.error('Falha ao carregar Firestore:', err);
     salvamentoStatus.textContent = 'Não foi possível acessar o banco. Confira as regras do Cloud Firestore.';
     salvamentoStatus.style.color = 'var(--red)';
@@ -630,6 +643,7 @@ function definirData(iso){
   btnCalendario.textContent = `${dia}/${mes}`;
   dataHint.textContent = '';
   if (calendario.classList.contains('show')) desenharCalendario(Number(dia));
+  if (typeof renderProducaoPorDia === 'function') renderProducaoPorDia();
 }
 
 inData.addEventListener('change', () => definirData(inData.value));
@@ -988,33 +1002,29 @@ function render(){
 }
 
 function renderProducaoPorDia(){
-  const porDia = new Map();
-  registros.forEach(r => {
-    const data = r.data || '';
-    if (!porDia.has(data)) porDia.set(data, { registros: 0, pacotes: 0, pecas: 0 });
-    const item = porDia.get(data);
+  const dataSelecionada = inData.value || hojeISO();
+  const doDia = registros.filter(r => (r.data || '') === dataSelecionada);
+  const registrosDia = doDia.length;
+  const pacotesDia = doDia.reduce((soma, r) => soma + (Number(r.quantidadePacotes) || 1), 0);
+  const pecasDia = doDia.reduce((soma, r) => {
     const quantidade = Number(r.quantidadePorPacote ?? r.quantidade) || 0;
     const pacotes = Number(r.quantidadePacotes) || 1;
-    item.registros += 1;
-    item.pacotes += pacotes;
-    item.pecas += Number(r.totalPecas) || quantidade * pacotes;
-  });
+    return soma + (Number(r.totalPecas) || quantidade * pacotes);
+  }, 0);
 
   const tbodyDia = $('tbodyProducaoDia');
   const vazioDia = $('producaoDiaVazia');
   tbodyDia.innerHTML = '';
-  const dias = [...porDia.entries()].sort((a,b) => b[0].localeCompare(a[0]));
-  vazioDia.hidden = dias.length > 0;
-  dias.forEach(([data, item]) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${data ? fmtData(data) : '—'}</td>
-      <td class="num">${fmtNum(item.registros)}</td>
-      <td class="num">${fmtNum(item.pacotes)}</td>
-      <td class="num qtd-in">${fmtNum(item.pecas)}</td>
-    `;
-    tbodyDia.appendChild(tr);
-  });
+  vazioDia.hidden = registrosDia > 0;
+  if (!registrosDia) return;
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td class="num">${fmtNum(registrosDia)}</td>
+    <td class="num">${fmtNum(pacotesDia)}</td>
+    <td class="num qtd-in">${fmtNum(pecasDia)}</td>
+  `;
+  tbodyDia.appendChild(tr);
 }
 
 function renderTabela(){
