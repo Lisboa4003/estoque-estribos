@@ -407,6 +407,10 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 let usuarioAtual = null;
 let dadosProntos = false;
+const TEMPO_INATIVIDADE_MS = 10 * 60 * 1000;
+let temporizadorInatividade = null;
+let ultimoRegistroAtividade = 0;
+let encerradaPorInatividade = false;
 
 /* =========================================================
    ESTADO
@@ -500,19 +504,79 @@ loginForm.addEventListener('submit', async e => {
   }
 });
 
-$('btnLogout').addEventListener('click', () => auth.signOut());
+function chaveAtividade(uid){ return `estoque_ultima_atividade_${uid}`; }
+
+function limparTemporizadorInatividade(){
+  if (temporizadorInatividade){ clearTimeout(temporizadorInatividade); temporizadorInatividade = null; }
+}
+
+function iniciarTemporizadorInatividade(){
+  limparTemporizadorInatividade();
+  if (!usuarioAtual) return;
+  const chave = chaveAtividade(usuarioAtual.uid);
+  const ultima = Number(localStorage.getItem(chave)) || Date.now();
+  const restante = TEMPO_INATIVIDADE_MS - (Date.now() - ultima);
+  if (restante <= 0){
+    encerradaPorInatividade = true;
+    localStorage.removeItem(chave);
+    auth.signOut();
+    return;
+  }
+  temporizadorInatividade = setTimeout(() => {
+    encerradaPorInatividade = true;
+    localStorage.removeItem(chave);
+    auth.signOut();
+  }, restante);
+}
+
+function registrarAtividade(){
+  if (!usuarioAtual || document.hidden) return;
+  const agora = Date.now();
+  if (agora - ultimoRegistroAtividade < 5000) return;
+  ultimoRegistroAtividade = agora;
+  localStorage.setItem(chaveAtividade(usuarioAtual.uid), String(agora));
+  iniciarTemporizadorInatividade();
+}
+
+['pointerdown','keydown','touchstart','scroll'].forEach(evento =>
+  document.addEventListener(evento, registrarAtividade, {passive:true})
+);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && usuarioAtual) iniciarTemporizadorInatividade();
+});
+window.addEventListener('focus', () => { if (usuarioAtual) iniciarTemporizadorInatividade(); });
+window.addEventListener('storage', e => {
+  if (usuarioAtual && e.key === chaveAtividade(usuarioAtual.uid)) iniciarTemporizadorInatividade();
+});
+
+$('btnLogout').addEventListener('click', async () => {
+  limparTemporizadorInatividade();
+  if (usuarioAtual) localStorage.removeItem(chaveAtividade(usuarioAtual.uid));
+  await auth.signOut();
+});
 
 auth.onAuthStateChanged(async user => {
   usuarioAtual = user || null;
   dadosProntos = false;
   if (!user){
+    limparTemporizadorInatividade();
     loginCard.hidden = false;
     appContent.hidden = true;
     registros = [];
-    loginStatus.textContent = '';
+    loginStatus.textContent = encerradaPorInatividade ? 'Sessão encerrada após 10 minutos sem atividade. Entre novamente.' : '';
+    encerradaPorInatividade = false;
     render();
     return;
   }
+  const ultimaAtividade = Number(localStorage.getItem(chaveAtividade(user.uid))) || 0;
+  if (ultimaAtividade && Date.now() - ultimaAtividade >= TEMPO_INATIVIDADE_MS){
+    encerradaPorInatividade = true;
+    localStorage.removeItem(chaveAtividade(user.uid));
+    await auth.signOut();
+    return;
+  }
+  localStorage.setItem(chaveAtividade(user.uid), String(Date.now()));
+  iniciarTemporizadorInatividade();
   loginCard.hidden = true;
   appContent.hidden = false;
   sessionEmail.textContent = user.email || '';
