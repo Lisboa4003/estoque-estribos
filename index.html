@@ -304,6 +304,25 @@
     </div>
   </div>
 
+  <!-- ================= PRODUÇÃO POR DIA ================= -->
+  <section class="card">
+    <h2>Produção por dia</h2>
+    <div class="table-wrap">
+      <table style="min-width:520px">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th style="text-align:right">Registros</th>
+            <th style="text-align:right">Pacotes</th>
+            <th style="text-align:right">Total produzido (peças)</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyProducaoDia"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="producaoDiaVazia" hidden>Nenhuma produção registrada.</div>
+  </section>
+
   <!-- ================= ENTRADAS REGISTRADAS ================= -->
   <section class="card">
     <h2>Entradas registradas</h2>
@@ -881,6 +900,37 @@ function registrosFiltrados(){
 function render(){
   renderTabela();
   renderStats();
+  renderProducaoPorDia();
+}
+
+function renderProducaoPorDia(){
+  const porDia = new Map();
+  registros.forEach(r => {
+    const data = r.data || '';
+    if (!porDia.has(data)) porDia.set(data, { registros: 0, pacotes: 0, pecas: 0 });
+    const item = porDia.get(data);
+    const quantidade = Number(r.quantidadePorPacote ?? r.quantidade) || 0;
+    const pacotes = Number(r.quantidadePacotes) || 1;
+    item.registros += 1;
+    item.pacotes += pacotes;
+    item.pecas += Number(r.totalPecas) || quantidade * pacotes;
+  });
+
+  const tbodyDia = $('tbodyProducaoDia');
+  const vazioDia = $('producaoDiaVazia');
+  tbodyDia.innerHTML = '';
+  const dias = [...porDia.entries()].sort((a,b) => b[0].localeCompare(a[0]));
+  vazioDia.hidden = dias.length > 0;
+  dias.forEach(([data, item]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${data ? fmtData(data) : '—'}</td>
+      <td class="num">${fmtNum(item.registros)}</td>
+      <td class="num">${fmtNum(item.pacotes)}</td>
+      <td class="num qtd-in">${fmtNum(item.pecas)}</td>
+    `;
+    tbodyDia.appendChild(tr);
+  });
 }
 
 function renderTabela(){
